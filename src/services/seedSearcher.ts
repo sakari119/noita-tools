@@ -107,32 +107,50 @@ export class SeedSearcher {
     }
   }
 
+  private checkSeed(seed: number): boolean {
+    this.gameInfoProvider.randoms.SetWorldSeed(seed);
+    try {
+      return this.rules.rules.every(r => this.check(r));
+    } catch (e) {
+      console.error(`Seed ${seed} error: `, e);
+      return false;
+    }
+  }
+
+  private recordFoundSeed(seed: number, res?: number[]): boolean {
+    this.foundSeed = +seed;
+    res?.push(+seed);
+    if (this.findAll) {
+      this.foundcb(this.getInfo());
+      return false;
+    }
+    return true;
+  }
+
   findSync(from: number, to: number): number[] {
     if (to < from) {
       return this.findSync(to, from);
     }
 
-    const res: number[] = [];
+    const candidates = Array.from({ length: to - from }, (_, i) => from + i);
+    return this.verifyCandidatesSync(candidates, from, to);
+  }
 
-    for (let seed = from; seed < to; seed++) {
-      const startTime = performance.now();
-      this.gameInfoProvider.randoms.SetWorldSeed(seed);
-      let found = false;
-      try {
-        found = this.rules.rules.every(r => this.check(r));
-      } catch (e) {
-        console.error(`Seed ${seed} error: `, e);
+  verifyCandidatesSync(candidates: number[], from?: number, to?: number): number[] {
+    const res: number[] = [];
+    const start = from === undefined || to === undefined ? -Infinity : Math.min(from, to);
+    const end = from === undefined || to === undefined ? Infinity : Math.max(from, to);
+
+    for (const seed of candidates) {
+      if (!Number.isInteger(seed) || seed < start || seed >= end) {
+        continue;
       }
+      const startTime = performance.now();
+      const found = this.checkSeed(seed);
       const endTime = performance.now();
       this.sumExecTime += endTime - startTime;
-      if (found) {
-        this.foundSeed = +seed;
-        res.push(+seed);
-        if (this.findAll) {
-          this.foundcb(this.getInfo());
-        } else {
-          break;
-        }
+      if (found && this.recordFoundSeed(seed, res)) {
+        break;
       }
       this.count++;
     }
@@ -169,23 +187,12 @@ export class SeedSearcher {
         await new Promise(res => setTimeout(res, 0));
       }
       const startTime = performance.now();
-      this.gameInfoProvider.randoms.SetWorldSeed(this.currentSeed);
-      let found = false;
-      try {
-        found = this.rules.rules.every(r => this.check(r));
-      } catch (e) {
-        console.error(`Seed ${this.currentSeed} error: `, e);
-      }
+      const found = this.checkSeed(this.currentSeed);
       const endTime = performance.now();
       this.sumExecTime += endTime - startTime;
 
-      if (found) {
-        this.foundSeed = +this.currentSeed;
-        if (this.findAll) {
-          this.foundcb(this.getInfo());
-        } else {
-          break;
-        }
+      if (found && this.recordFoundSeed(this.currentSeed)) {
+        break;
       }
       this.currentSeed += this.step;
       this.count++;
