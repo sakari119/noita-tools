@@ -6,6 +6,7 @@ import * as seedSearcher from "./seedSearcher";
 import nodeEndpoint from "comlink/dist/umd/node-adapter.js";
 import EventEmitter from "events";
 import { getTreeTools } from "../components/SearchSeeds/node";
+import { gpuPrefilterSeeds } from "./gpuSearch/gpuPrefilter";
 
 export class WorkerHandler extends EventTarget {
   latestData?: ReturnType<seedSearcher.SeedSearcher["getInfo"]>;
@@ -26,6 +27,11 @@ export class WorkerHandler extends EventTarget {
       seedEnd: to,
       rules,
     });
+    const candidates = await gpuPrefilterSeeds(from, to, rules);
+    if (candidates) {
+      return this.comlinkWorker.verifyCandidatesSync(candidates, from, to);
+    }
+
     const res = await this.comlinkWorker.findSync(from, to);
 
     return res;

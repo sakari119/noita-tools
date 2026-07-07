@@ -1,5 +1,6 @@
 import { Remote, wrap, releaseProxy, proxy } from "comlink";
 import { getTreeTools } from "../components/SearchSeeds/node";
+import { gpuPrefilterSeeds } from "./gpuSearch/gpuPrefilter";
 import { ILogicRules, IRules } from "./SeedInfo/infoHandler/IRule";
 import { SeedSearcher, ISeedSearcherConfig } from "./seedSearcher";
 
@@ -24,6 +25,11 @@ export class WorkerHandler extends EventTarget {
       seedEnd: to,
       rules,
     });
+    const candidates = await gpuPrefilterSeeds(from, to, rules);
+    if (candidates) {
+      return this.comlinkWorker.verifyCandidatesSync(candidates, from, to);
+    }
+
     const res = await this.comlinkWorker.findSync(from, to);
 
     return res;
