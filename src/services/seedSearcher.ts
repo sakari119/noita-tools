@@ -1,5 +1,6 @@
 import GameInfoProvider from "../services/SeedInfo/infoHandler";
 import { IRules, ILogicRules, RuleType, IRuleRules } from "./SeedInfo/infoHandler/IRule";
+export { searchRuleCapabilities } from "./searchCapabilities";
 
 // const includesAll = (arr: string[], target: string[]) =>
 // 	arr.length ? target.every(v => arr.includes(v)) : true;
